@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Corrector Ortográfico</title>
+  </head>
+  <body>
+    <header class="bg-gray-500 text-white text-center">
+      <img
+        src="{{ url_for('static', filename='logo.png') }}"
+        alt="Logo"
+        class="mx-auto"
+        width="225"
+      />
+    </header>
+
+    <main class="container mx-auto mt-20">
+      <div
+        class="relative flex flex-col text-gray-700 bg-white shadow-md w-full rounded-xl bg-clip-border mx-auto"
+      >
+        <div
+          class="relative grid mx-4 mb-4 -mt-6 overflow-hidden text-white shadow-lg h-28 place-items-center rounded-xl bg-gradient-to-tr from-gray-900 to-gray-800 bg-clip-border shadow-gray-900/20"
+        >
+          <h3
+            class="block font-sans text-3xl antialiased font-semibold leading-snug tracking-normal text-white"
+          >
+            Corrector Ortográfico
+          </h3>
+        </div>
+        <div class="p-6">
+          <label
+            for="textoOriginal"
+            class="block mb-2 text-sm font-medium text-gray-900"
+            >Mensaje</label
+          >
+
+          <textarea
+            id="textoOriginal"
+            class="w-full p-3 text-sm font-normal border rounded-md border-blue-gray-200 text-blue-gray-700 focus:border-2 focus:border-gray-900"
+            placeholder="Escribe tu mensaje aquí..."
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="p-6 pt-0">
+          <button
+            id="submitButton"
+            class="block w-full select-none rounded-lg bg-gradient-to-tr from-gray-900 to-gray-800 py-3 px-6 text-center align-middle font-sans text-xs font-bold uppercase text-white shadow-md shadow-gray-900/10 transition-all hover:shadow-lg hover:shadow-gray-900/20 active:opacity-[0.85] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+            onclick="corregirTexto()"
+          >
+            Verificar Ortografía
+          </button>
+        </div>
+      </div>
+
+      <div id="resultados" class="hidden my-10 text-center">
+        <div>
+          <h2 class="text-xl font-bold" id="estadoCorreccion"></h2>
+          <p id="textoCorregido" class="mt-2"></p>
+        </div>
+
+        <div class="mt-6" id="correcciones">
+          <h2 class="text-xl font-bold">Palabras Corregidas:</h2>
+          <ul id="palabrasCorregidas" class="list-disc list-inside mt-2"></ul>
+        </div>
+      </div>
+    </main>
+    <script>
+      function corregirTexto() {
+        const textoOriginal = document
+          .getElementById("textoOriginal")
+          .value.trim();
+        const submitButton = document.getElementById("submitButton");
+        const resultados = document.getElementById("resultados");
+        const estadoCorreccion = document.getElementById("estadoCorreccion");
+        const correcciones = document.getElementById("correcciones");
+
+        if (textoOriginal === "") {
+          alert("Por favor, ingresa un mensaje antes de verificar.");
+          return;
+        }
+
+        submitButton.disabled = true;
+        resultados.classList.add("hidden");
+
+        fetch("/corregir", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ texto: textoOriginal }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert("Error: " + data.error);
+            } else {
+              const textoCorregido = data.corregido;
+              document.getElementById("textoCorregido").textContent =
+                textoCorregido;
+
+              if (data.perfecto) {
+                estadoCorreccion.textContent =
+                  "El texto está perfectamente escrito.";
+                correcciones.classList.add("hidden");
+              } else {
+                estadoCorreccion.textContent = "Texto Corregido:";
+                correcciones.classList.remove("hidden");
+
+                const palabrasOriginales = new Set(
+                  textoOriginal.match(/\b\w+\b/g)
+                );
+                const palabrasCorregidas = new Set(
+                  textoCorregido.match(/\b\w+\b/g)
+                );
+                const palabrasErroneas = [...palabrasOriginales].filter(
+                  (palabra) => !palabrasCorregidas.has(palabra)
+                );
+
+                const listaCorrecciones =
+                  document.getElementById("palabrasCorregidas");
+                listaCorrecciones.innerHTML = ""; 
+                palabrasErroneas.forEach((palabra) => {
+                  const item = document.createElement("li");
+                  item.textContent = palabra;
+                  listaCorrecciones.appendChild(item);
+                });
+              }
+
+              resultados.classList.remove("hidden"); 
+            }
+          })
+          .finally(() => {
+            submitButton.disabled = false;
+          });
+      }
+    </script>
+  </body>
+</html>
